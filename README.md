@@ -1,4 +1,4 @@
-# Default setup for new PC
+# Automate the installation of new applications - PowerShell
 
 This 'pc_setup.ps1' script allows you to automate the installation of new applications such as: Adobe Reader, Chrome browser, MS Office 2024 LTS, as well as perform some minor modifications on your computer, such as: formatting the second disk to save new data, changing the position of the bottom toolbar.
 
