@@ -28,7 +28,7 @@ For example, if you want to install everything, you need to enter ```1,2,3,4,5``
 
 The last thing to do is change the default applications in Windows settings. For .pdf files, we replace them with Adobe Reader and for .html files, we also change the HTTP and HTTPS protocols to the Chrome browser.
 
-Documentatnion:
+#### Documentation
 [Adobe Acrobat Reader Documentation](https://helpx.adobe.com/pdf/adobe_reader_reference.pdf)
 [Google Chrome Documentation](https://developer.chrome.com/docs?hl=en)
 [Office Customization Tool Documentation](https://learn.microsoft.com/pl-pl/microsoft-365-apps/admin-center/overview-office-customization-tool)
