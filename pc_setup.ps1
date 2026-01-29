@@ -203,6 +203,7 @@ try {
     Write-Host "[4] Change the toolbar"
     Write-Host "[5] Update Windows & drivers"
     Write-Host "[6] Clean up disk"
+    Write-Host "[7] Set Default App"
     Write-Host ""
     $choice = Read-Host "Choose options (e.g. 1,2,4)"
     $selected = $choice -split ',' | ForEach-Object { $_.Trim() }
@@ -215,6 +216,7 @@ try {
             '4' { ChangeToolbar }
             '5' { UpdateWindows }
             '6' { ClearDisk }
+            '7' { SetDefaultApp}
             default { Write-Warning "Undefined value: $s" }
         }
     }
