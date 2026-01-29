@@ -132,34 +132,38 @@ function UpdateWindows {
 }
 
 # Default App
-function TestAppInstalled {
-    param([string]$Path)
-    return Test-Path $Path
-}
-$chromePaths = "C:\Program Files\Google\Chrome\Application\chrome.exe"
-$chromeInstalled = $false
-foreach ($path in $chromePaths) {
-    if (Test-AppInstalled $path) {
-        $chromeInstalled = $true
-        Write-Host "  [✓] Chrome znaleziony: $path" -ForegroundColor Green
-        break
+function SetDefaultApp {
+    function TestAppInstalled {
+        param([string]$Path)
+        return Test-Path $Path
     }
-}
-if ($chromeInstalled) {
-    # Ustaw Chrome jako domyślny
-    $regPath = "HKCU:\Software\Microsoft\Windows\Shell\Associations\UrlAssociations"
-    $protocols = @("http", "https", "ftp")
-    
-    foreach ($protocol in $protocols) {
-        $fullPath = "$regPath\$protocol\UserChoice"
-        if (Test-Path $fullPath) {
-            Remove-Item $fullPath -Force -ErrorAction SilentlyContinue
+    $chromePaths = "C:\Program Files\Google\Chrome\Application\chrome.exe"
+    $chromeInstalled = $false
+    foreach ($path in $chromePaths) {
+        if (Test-AppInstalled $path) {
+            $chromeInstalled = $true
+            Write-Host "  [✓] Chrome znaleziony: $path" -ForegroundColor Green
+            break
         }
     }
+    if ($chromeInstalled) {
+        # Ustaw Chrome jako domyślny
+        $regPath = "HKCU:\Software\Microsoft\Windows\Shell\Associations\UrlAssociations"
+        $protocols = @("http", "https", "ftp")
     
-    Write-Host "  [→] Chrome ustawiony jako domyślny" -ForegroundColor Cyan
-} else {
-    Write-Host "  [!] Chrome nie zainstalowany" -ForegroundColor Yellow
+        foreach ($protocol in $protocols) {
+            $fullPath = "$regPath\$protocol\UserChoice"
+            if (Test-Path $fullPath) {
+                Remove-Item $fullPath -Force -ErrorAction SilentlyContinue
+            }
+        }
+    
+        Write-Host "  [→] Chrome ustawiony jako domyślny" -ForegroundColor Cyan
+    }
+    else {
+        Write-Host "  [!] Chrome nie zainstalowany" -ForegroundColor Yellow
+    }
+    exit 0
 }
 
 # ClearDisk function
