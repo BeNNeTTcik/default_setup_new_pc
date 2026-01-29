@@ -32,8 +32,8 @@ Copy-Item -Path "Z:\Configuration.xml" -Destination "$downloadPath\Configuration
 Remove-PSDrive -Name Z 
 Write-Host "Files copied from `"$samba`""
 
-# Adobe-install function
-function Adobe-install {
+# InstallAdobe function
+function InstallAdobe {
     #REGEDIT
     Write-Host ">>> Adobe Installation"
     $adobePolicies = 'HKLM:\SOFTWARE\Policies\Adobe\Acrobat Reader\DC\FeatureLockDown'
@@ -42,12 +42,37 @@ function Adobe-install {
     New-ItemProperty -Path $adobePolicies -Name 'bDisablePDFHandlerSwitching' -Value 1 -PropertyType DWord -Force | Out-Null  # nie pytaj o bycie domyślnym
 
     $installerPath = "$downloadPath\Reader_pl_install.exe"
-    Start-Process -FilePath $installerPath -ArgumentList "/sAll /rs /rps /msi EULA_ACCEPT=YES SUPPRESS_APP_LAUNCH=YES DISABLE_ARM_SERVICE_INSTALL=1" -Wait
-    Write-Host "App Installed"
+    $proc = Start-Process -FilePath $installerPath -ArgumentList "/sAll /rs /rps /msi EULA_ACCEPT=YES SUPPRESS_APP_LAUNCH=YES DISABLE_ARM_SERVICE_INSTALL=1" -PassThru 
+    
+    $timeout = 600  
+    $elapsed = 0
+    
+    while (!$proc.HasExited -and $elapsed -lt $timeout) {
+        Start-Sleep -Seconds 10
+        $elapsed += 10
+    }
+
+    if (!$proc.HasExited) {
+        Stop-Process -Id $proc.Id -Force
+    }
+
+    $adobe = "AcroRd32", "Acrobat", "AcroCEF", "AdobeARM", "AdobeARMservice"
+
+    foreach ($p in $adobe) {
+        Get-Process -Name $p -ErrorAction SilentlyContinue |
+        Stop-Process -Force
+    }
+    if ($proc.HasExited) {
+        exit $proc.ExitCode
+    }
+    else {
+        Write-Host 'ExitCode "0" = App Installed'
+        exit 0
+    }
 }
 
-# Chrome-install function
-function Chrome-install {
+# InstallChrome function
+function InstallChrome {
     Write-Host ">>> Chrome Installation"
     # REGEDIT
     $chromePolicies = "HKLM:\SOFTWARE\Policies\Google\Chrome"
@@ -77,7 +102,7 @@ function Chrome-install {
 }
 
 # Start-change function (change 'Start' option on toolbar on left side position)
-function Toolbar-change {
+function ChangeToolbar {
     Write-Host ">>> Change Toolbar Posission"
     $Reg = "HKCU:\Software\Microsoft\Windows\CurrentVersion\Explorer\Advanced"
     $ValueName = "TaskbarAl"
@@ -85,8 +110,8 @@ function Toolbar-change {
     Write-Host "Toolbar Settings Changed"
 }
 
-# Office-install function
-function Office-install {
+# InstallOffice function
+function InstallOffice {
     Write-Host ">>> Office 2024 LTS Installation"
     $installerPath = "$downloadPath\setup.exe"
     $configureFile = "$downloadPath\Configuration.xml"
@@ -95,25 +120,71 @@ function Office-install {
     Write-Host "ExitCode `"$($r.ExitCode)`" if 0 == App Installed"
 }
 
-# Clear-disk function
-function Clear-disk {
+# Windows Update function
+function UpdateWindows {
+    Write-Host ">>> Updating Windows"
+    Install-Module -Name PSWindowsUpdate -Force -Confirm:$false
+    Set-ExecutionPolicy -ExecutionPolicy Bypass -Scope Process -Force
+    Import-Module PSWindowsUpdate
+    Get-WindowsUpdate -MicrosoftUpdate -Install -AcceptAll -IgnoreReboot
+    Write-Host "All Updates Installed"
+    exit 0
+}
+
+# Default App
+function TestAppInstalled {
+    param([string]$Path)
+    return Test-Path $Path
+}
+$chromePaths = "C:\Program Files\Google\Chrome\Application\chrome.exe"
+$chromeInstalled = $false
+foreach ($path in $chromePaths) {
+    if (Test-AppInstalled $path) {
+        $chromeInstalled = $true
+        Write-Host "  [✓] Chrome znaleziony: $path" -ForegroundColor Green
+        break
+    }
+}
+if ($chromeInstalled) {
+    # Ustaw Chrome jako domyślny
+    $regPath = "HKCU:\Software\Microsoft\Windows\Shell\Associations\UrlAssociations"
+    $protocols = @("http", "https", "ftp")
+    
+    foreach ($protocol in $protocols) {
+        $fullPath = "$regPath\$protocol\UserChoice"
+        if (Test-Path $fullPath) {
+            Remove-Item $fullPath -Force -ErrorAction SilentlyContinue
+        }
+    }
+    
+    Write-Host "  [→] Chrome ustawiony jako domyślny" -ForegroundColor Cyan
+} else {
+    Write-Host "  [!] Chrome nie zainstalowany" -ForegroundColor Yellow
+}
+
+# ClearDisk function
+function ClearDisk {
     Write-Host ">>> Clear & Prepare Disk on Data"
-    Clear-Disk -Number $diskNumber -RemoveData -Confirm:$false
+    ClearDisk -Number $diskNumber -RemoveData -Confirm:$false
     Initialize-Disk -Number $diskNumber -PartitionStyle MBR
     New-Partition -DiskNumber $diskNumber -UseMaximumSize -AssignDriveLetter | Format-Volume -FileSystem $fileSystem -NewFileSystemLabel $label -Confirm:$false
 }
 
 # Clear Installation Files function
-function Clear-InstFile {
+function ClearInstallationFiles {
     Write-Host ">>> Cleaning after all"
-    if(Test-Path "$downloadPath\ChromeSetup.exe") {
-    Remove-Item "$downloadPath\ChromeSetup.exe" -Force}
-    if(Test-Path "$downloadPath\setup.exe") {
-    Remove-Item "$downloadPath\setup.exe" -Force}
-    if(Test-Path "$downloadPath\Reader_pl_install.exe") {
-    Remove-Item "$downloadPath\Reader_pl_install.exe" -Force}
-    if(Test-Path "$downloadPath\Configuration.xml") {
-    Remove-Item "$downloadPath\Configuration.xml" -Force}
+    if (Test-Path "$downloadPath\ChromeSetup.exe") {
+        Remove-Item "$downloadPath\ChromeSetup.exe" -Force
+    }
+    if (Test-Path "$downloadPath\setup.exe") {
+        Remove-Item "$downloadPath\setup.exe" -Force
+    }
+    if (Test-Path "$downloadPath\Reader_pl_install.exe") {
+        Remove-Item "$downloadPath\Reader_pl_install.exe" -Force
+    }
+    if (Test-Path "$downloadPath\Configuration.xml") {
+        Remove-Item "$downloadPath\Configuration.xml" -Force
+    }
     Write-Host "All Installation Files Removed"
 }
 
@@ -126,24 +197,26 @@ try {
     Write-Host "[2] Install Adobe Reader"
     Write-Host "[3] Install MS Office 2024 LTS"
     Write-Host "[4] Change the toolbar"
-    Write-Host "[5] Clean up disk"
+    Write-Host "[5] Update Windows & drivers"
+    Write-Host "[6] Clean up disk"
     Write-Host ""
-    $choice   = Read-Host "Choose options (e.g. 1,2,4)"
+    $choice = Read-Host "Choose options (e.g. 1,2,4)"
     $selected = $choice -split ',' | ForEach-Object { $_.Trim() }
 
     foreach ($s in $selected) {
         switch ($s) {
-            '1' { Chrome-install }
-            '2' { Adobe-install }
-            '3' { Office-install }
-            '4' { Toolbar-change }
-            '5' { Clear-disk }
+            '1' { InstallChrome }
+            '2' { InstallAdobe }
+            '3' { InstallOffice }
+            '4' { ChangeToolbar }
+            '5' { UpdateWindows }
+            '6' { ClearDisk }
             default { Write-Warning "Undefined value: $s" }
         }
     }
 }
 finally {
     # Cleanup section
-    Clear-InstFile
+    ClearInstallationFiles
 }
 Write-Host "Installation complete. The last thing to do is change the default application in .pdf files => Adobe and .html files -> Chrome"

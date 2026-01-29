@@ -11,11 +11,11 @@ Paste all the installation files into a folder and share the Windows folder on t
 ```Remember not to change the file names, or the script won't work```
 
 ### Run Script
-1. Download the repository. Click 'Search' in the left corner -> write 'Windows PowerShell' -> Right-Click -> click 'Run as Administrator' -> paste the following command in the terminal: ```Expand-Archive -Path "$env:USERPROFILE\Downloads\default-setup-new-pc-main.zip" -DestinationPath "$env:USERPROFILE\Downloads\default-setup-new-pc-main" -Force```
+1. Download the repository. Click 'Search' in the left corner -> write 'Windows PowerShell' -> Right-Click -> click 'Run as Administrator' -> paste the following command in the terminal: ```Expand-Archive -Path "$env:USERPROFILE\Downloads\default_setup_new_pc-main.zip" -DestinationPath "$env:USERPROFILE\Downloads\default_setup_new_pc-main" -Force```
 
-2. Enter the folder and edit 'pc_setup.ps1' using Notepad, WordPad or Visual Studio Code. Find the variable section. I have briefly explained what the variables are used for in the file. Save the script after making modifications.
+2. Enter the folder and edit 'pc_setup.ps1' using Notepad, WordPad or Visual Studio Code. Find the variable section. I have briefly explained what the variables are used for in the file. Save the script after making modifications. Example of PS command for editing a file in Notepad: ```.\notepad.exe "$env:USERPROFILE\Downloads\default_setup_new_pc-main\default_setup_new_pc-main\pc_setup.ps1"```
 
-3. Open the Windows PowerShell window ('Run as Administrator') and paste the following command into the terminal: ``` Start-Process powershell.exe -ArgumentList "-NoProfile -ExecutionPolicy Bypass -File `"$env:USERPROFILE\Downloads\default-setup-new-pc-main\default-setup-new-pc-main\pc_setup.ps1`"" ```
+3. Open the Windows PowerShell window ('Run as Administrator') and paste the following command into the terminal: ``` Start-Process powershell.exe -ArgumentList "-NoProfile -ExecutionPolicy Bypass -File `"$env:USERPROFILE\Downloads\default_setup_new_pc-main\default_setup_new_pc-main\pc_setup.ps1`"" ```
 
 4. After run script, you can select the application you want to install. 
 Avaliable options:
