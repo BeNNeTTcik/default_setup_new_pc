@@ -6,13 +6,14 @@
 # "[2] Install Adobe Reader"
 # "[3] Install MS Office 2024 LTS"
 # "[4] Change the toolbar"
-# "[5] Clean up disk"
+# "[5] Windows Update"
+# "[6] Clean up disk"
 #
 # All operations can be run from the command line or the PowerShell console.
 
 # ===========   VARIABLES   =======================
 
-$samba = "\\DESKTOP-EFFK073\dane"               # path to shared folder with installation files
+$samba = "\\DESKTOP-EFFK073\data"               # path to shared folder with installation files
 $downloadPath = "$env:USERPROFILE\Downloads"    # path to download folder
 
 # DISK FORMATE SETTINGS
@@ -32,7 +33,7 @@ Copy-Item -Path "Z:\Configuration.xml" -Destination "$downloadPath\Configuration
 Remove-PSDrive -Name Z 
 Write-Host "Files copied from `"$samba`""
 
-# InstallAdobe function
+# Install Adobe function
 function InstallAdobe {
     #REGEDIT
     Write-Host ">>> Adobe Installation"
@@ -71,7 +72,7 @@ function InstallAdobe {
     }
 }
 
-# InstallChrome function
+# Install Chrome function
 function InstallChrome {
     Write-Host ">>> Chrome Installation"
     # REGEDIT
@@ -110,7 +111,7 @@ function ChangeToolbar {
     Write-Host "Toolbar Settings Changed"
 }
 
-# InstallOffice function
+# Install Office function
 function InstallOffice {
     Write-Host ">>> Office 2024 LTS Installation"
     $installerPath = "$downloadPath\setup.exe"
@@ -133,37 +134,17 @@ function UpdateWindows {
 
 # Default App
 function SetDefaultApp {
-    function TestAppInstalled {
-        param([string]$Path)
-        return Test-Path $Path
+    # Install Git if not exists
+    if (Get-Command git -ErrorAction SilentlyContinue) {
+        Write-Host "Git Version:"
+        git --version
+        exit 0
+    } else {
+        winget install --id Git.Git -e --source winget --accept-package-agreements --accept-source-agreements
     }
-    $chromePaths = "C:\Program Files\Google\Chrome\Application\chrome.exe"
-    $chromeInstalled = $false
-    foreach ($path in $chromePaths) {
-        if (Test-AppInstalled $path) {
-            $chromeInstalled = $true
-            Write-Host "  [✓] Chrome znaleziony: $path" -ForegroundColor Green
-            break
-        }
-    }
-    if ($chromeInstalled) {
-        # Ustaw Chrome jako domyślny
-        $regPath = "HKCU:\Software\Microsoft\Windows\Shell\Associations\UrlAssociations"
-        $protocols = @("http", "https", "ftp")
+
+    $pssfta = "https://github.com/DanysysTeam/PS-SFTA.git"
     
-        foreach ($protocol in $protocols) {
-            $fullPath = "$regPath\$protocol\UserChoice"
-            if (Test-Path $fullPath) {
-                Remove-Item $fullPath -Force -ErrorAction SilentlyContinue
-            }
-        }
-    
-        Write-Host "  [→] Chrome ustawiony jako domyślny" -ForegroundColor Cyan
-    }
-    else {
-        Write-Host "  [!] Chrome nie zainstalowany" -ForegroundColor Yellow
-    }
-    exit 0
 }
 
 # ClearDisk function
@@ -192,7 +173,7 @@ function ClearInstallationFiles {
     Write-Host "All Installation Files Removed"
 }
 
-# ================ MAIN   LOOP   =====================
+# ================ MAIN   LOOP =====================
 
 try {
     # MENU section
@@ -203,7 +184,6 @@ try {
     Write-Host "[4] Change the toolbar"
     Write-Host "[5] Update Windows & drivers"
     Write-Host "[6] Clean up disk"
-    Write-Host "[7] Set Default App"
     Write-Host ""
     $choice = Read-Host "Choose options (e.g. 1,2,4)"
     $selected = $choice -split ',' | ForEach-Object { $_.Trim() }
@@ -216,7 +196,6 @@ try {
             '4' { ChangeToolbar }
             '5' { UpdateWindows }
             '6' { ClearDisk }
-            '7' { SetDefaultApp}
             default { Write-Warning "Undefined value: $s" }
         }
     }
