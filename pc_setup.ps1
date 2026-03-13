@@ -35,40 +35,49 @@ Write-Host "Files copied from `"$samba`""
 
 # Install Adobe function
 function InstallAdobe {
-    #REGEDIT
     Write-Host ">>> Adobe Installation"
-    $adobePolicies = 'HKLM:\SOFTWARE\Policies\Adobe\Acrobat Reader\DC\FeatureLockDown'
-    New-Item -Path $adobePolicies -Force | Out-Null
-    New-ItemProperty -Path $adobePolicies -Name 'bToggleFTE' -Value 0 -PropertyType DWord -Force | Out-Null        # pomija First-Time Experience
-    New-ItemProperty -Path $adobePolicies -Name 'bDisablePDFHandlerSwitching' -Value 1 -PropertyType DWord -Force | Out-Null  # nie pytaj o bycie domyślnym
 
     $installerPath = "$downloadPath\Reader_pl_install.exe"
-    $proc = Start-Process -FilePath $installerPath -ArgumentList "/sAll /rs /rps /msi EULA_ACCEPT=YES SUPPRESS_APP_LAUNCH=YES DISABLE_ARM_SERVICE_INSTALL=1" -PassThru 
-    
-    $timeout = 600  
-    $elapsed = 0
-    
+    $proc = Start-Process -FilePath $installerPath `
+        -ArgumentList "/sAll /rs /rps /msi EULA_ACCEPT=YES SUPPRESS_APP_LAUNCH=YES DISABLE_ARM_SERVICE_INSTALL=1" `
+        -PassThru
+
+    $timeout = 600
+    $elapsed  = 0
+
     while (!$proc.HasExited -and $elapsed -lt $timeout) {
         Start-Sleep -Seconds 10
         $elapsed += 10
     }
 
     if (!$proc.HasExited) {
+        Write-Host ">>> TIMEOUT – wymuszam zamknięcie"
         Stop-Process -Id $proc.Id -Force
     }
 
-    $adobe = "AcroRd32", "Acrobat", "AcroCEF", "AdobeARM", "AdobeARMservice"
+    foreach ($p in "AcroRd32","Acrobat","AcroCEF","AdobeARM","AdobeARMservice") {
+        Get-Process -Name $p -ErrorAction SilentlyContinue | Stop-Process -Force
+    }
 
-    foreach ($p in $adobe) {
-        Get-Process -Name $p -ErrorAction SilentlyContinue |
-        Stop-Process -Force
-    }
-    if ($proc.HasExited) {
-        exit $proc.ExitCode
-    }
-    else {
-        Write-Host 'ExitCode "0" = App Installed'
-        exit 0
+    # Weryfikacja przez rejestr
+    $adobeInstalled = Get-ItemProperty `
+        -Path 'HKLM:\SOFTWARE\WOW6432Node\Adobe\Adobe Acrobat\DC\Installer\InstallPath' `
+        -ErrorAction SilentlyContinue
+
+    if ($adobeInstalled -and (Test-Path "$exePath\Acrobat.exe")) {
+        Write-Host ">>> Instalacja potwierdzona: $adobeInstalled\Acrobat.exe"
+        
+        # Polityki DOPIERO po potwierdzeniu instalacji
+        $adobePolicies = 'HKLM:\SOFTWARE\Policies\Adobe\Acrobat Reader\DC\FeatureLockDown'
+        New-Item -Path $adobePolicies -Force | Out-Null
+        New-ItemProperty -Path $adobePolicies -Name 'bToggleFTE'                  -Value 0 -PropertyType DWord -Force | Out-Null
+        New-ItemProperty -Path $adobePolicies -Name 'bDisablePDFHandlerSwitching' -Value 1 -PropertyType DWord -Force | Out-Null
+        Write-Host ">>> Polityki rejestru ustawione"
+        
+        return 0
+    } else {
+        Write-Host ">>> BŁĄD: Adobe nie znaleziony w rejestrze (ExitCode: $($proc.ExitCode))"
+        return 1
     }
 }
 
