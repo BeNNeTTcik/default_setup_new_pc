@@ -180,12 +180,6 @@ function RemoveMS {
     return 0
     } else {
     Start-Process -FilePath $C2R -ArgumentList "scenario=install scenariosubtype=uninstall DisplayLevel=False forceappshutdown=True" -Wait
-    #$OfficeUninstallStrings = (Get-ItemProperty HKLM:\Software\Microsoft\Windows\CurrentVersion\Uninstall\* | Where {$_.DisplayName -like "*Microsoft Office 365*"} | Select UninstallString).UninstallString
-    #ForEach ($UninstallString in $OfficeUninstallStrings) {
-     #   $UninstallEXE = ($UninstallString -split '"')[1]
-      #  $UninstallArg = ($UninstallString -split '"')[2] + " DisplayLevel=False"
-       # Start-Process -FilePath $UninstallEXE -ArgumentList $UninstallArg -Wait
-    #} 
     Write-Host "Office Uninstalled"
     return 0
     }
