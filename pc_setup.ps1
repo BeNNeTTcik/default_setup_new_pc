@@ -1,19 +1,22 @@
+﻿
 # PowerShell script for setting up a new computer, installing applications, and modifying Windows settings by BeNNeTTcik
 #
 # This script is designed to run on a new computer to automate the installation of necessary applications.
 # The program consists of five options:
+# "[0] Uninstall Default MS Office 365"
 # "[1] Install Chrome"
 # "[2] Install Adobe Reader"
 # "[3] Install MS Office 2024 LTS"
 # "[4] Change the toolbar"
 # "[5] Windows Update"
 # "[6] Clean up disk"
+# "[7] Copy IPCONFIG"
 #
 # All operations can be run from the command line or the PowerShell console.
 
 # ===========   VARIABLES   =======================
 
-$samba = "\\DESKTOP-EFFK073\data"               # path to shared folder with installation files
+$samba = "\\DESKTOP-EFFK073\dane"               # path to shared folder with installation files
 $downloadPath = "$env:USERPROFILE\Downloads"    # path to download folder
 
 # DISK FORMATE SETTINGS
@@ -35,56 +38,53 @@ Write-Host "Files copied from `"$samba`""
 
 # Install Adobe function
 function InstallAdobe {
+    #REGEDIT
     Write-Host ">>> Adobe Installation"
+    $adobePolicies = 'HKLM:\SOFTWARE\Policies\Adobe\Acrobat Reader\DC\FeatureLockDown'
+    New-Item -Path $adobePolicies -Force | Out-Null
+    New-ItemProperty -Path $adobePolicies -Name 'bToggleFTE' -Value 0 -PropertyType DWord -Force | Out-Null        # pomija First-Time Experience
+    New-ItemProperty -Path $adobePolicies -Name 'bDisablePDFHandlerSwitching' -Value 1 -PropertyType DWord -Force | Out-Null  # nie pytaj o bycie domyÅ›lnym
 
     $installerPath = "$downloadPath\Reader_pl_install.exe"
-    $proc = Start-Process -FilePath $installerPath `
-        -ArgumentList "/sAll /rs /rps /msi EULA_ACCEPT=YES SUPPRESS_APP_LAUNCH=YES DISABLE_ARM_SERVICE_INSTALL=1" `
-        -PassThru
-
-    $timeout = 600
-    $elapsed  = 0
-
+    $proc = Start-Process -FilePath $installerPath -ArgumentList "/sAll /rs /rps /msi EULA_ACCEPT=YES SUPPRESS_APP_LAUNCH=YES DISABLE_ARM_SERVICE_INSTALL=1" -PassThru 
+    
+    $timeout = 600  
+    $elapsed = 0
+    
     while (!$proc.HasExited -and $elapsed -lt $timeout) {
         Start-Sleep -Seconds 10
         $elapsed += 10
     }
 
     if (!$proc.HasExited) {
-        Write-Host ">>> TIMEOUT – wymuszam zamknięcie"
         Stop-Process -Id $proc.Id -Force
     }
 
-    foreach ($p in "AcroRd32","Acrobat","AcroCEF","AdobeARM","AdobeARMservice") {
-        Get-Process -Name $p -ErrorAction SilentlyContinue | Stop-Process -Force
+    $adobe = "AcroRd32", "Acrobat", "AcroCEF", "AdobeARM", "AdobeARMservice"
+
+    foreach ($p in $adobe) {
+        Get-Process -Name $p -ErrorAction SilentlyContinue |
+        Stop-Process -Force
     }
-
-    # Weryfikacja przez rejestr
-    $adobeInstalled = Get-ItemProperty `
-        -Path 'HKLM:\SOFTWARE\WOW6432Node\Adobe\Adobe Acrobat\DC\Installer\InstallPath' `
-        -ErrorAction SilentlyContinue
-
-    if ($adobeInstalled -and (Test-Path "$exePath\Acrobat.exe")) {
-        Write-Host ">>> Instalacja potwierdzona: $adobeInstalled\Acrobat.exe"
-        
-        # Polityki DOPIERO po potwierdzeniu instalacji
-        $adobePolicies = 'HKLM:\SOFTWARE\Policies\Adobe\Acrobat Reader\DC\FeatureLockDown'
-        New-Item -Path $adobePolicies -Force | Out-Null
-        New-ItemProperty -Path $adobePolicies -Name 'bToggleFTE'                  -Value 0 -PropertyType DWord -Force | Out-Null
-        New-ItemProperty -Path $adobePolicies -Name 'bDisablePDFHandlerSwitching' -Value 1 -PropertyType DWord -Force | Out-Null
-        Write-Host ">>> Polityki rejestru ustawione"
-        
+    if ($proc.HasExited) {
+        return $proc.ExitCode
+    }
+    else {
+        Write-Host 'ExitCode "0" = App Installed'
         return 0
-    } else {
-        Write-Host ">>> BŁĄD: Adobe nie znaleziony w rejestrze (ExitCode: $($proc.ExitCode))"
-        return 1
     }
 }
 
 # Install Chrome function
 function InstallChrome {
     Write-Host ">>> Chrome Installation"
+    $installerPath = "$downloadPath\ChromeSetup.exe"
+    $q = Start-Process -FilePath $installerPath -ArgumentList "/qn /norestart" -Wait -PassThru
+    $q.WaitForExit()
+   
     # REGEDIT
+    Write-Host "Change Registery - First run"
+
     $chromePolicies = "HKLM:\SOFTWARE\Policies\Google\Chrome"
     New-Item -Path $chromePolicies -Force | Out-Null
 
@@ -105,9 +105,8 @@ function InstallChrome {
     New-ItemProperty -Path $chromePolicies -Name "ImportSavedPasswords" -Value 0 -PropertyType DWord -Force | Out-Null
     New-ItemProperty -Path $chromePolicies -Name "ImportSearchEngine" -Value 0 -PropertyType DWord -Force | Out-Null
 
-    $installerPath = "$downloadPath\ChromeSetup.exe"
-    $q = Start-Process -FilePath $installerPath -ArgumentList "/qn /norestart" -Wait -PassThru
-    $q.WaitForExit()
+    Write-Host "Registery changed"
+
     Write-Host "ExitCode `"$($q.ExitCode)`" if 0 == App Installed"
 }
 
@@ -138,22 +137,17 @@ function UpdateWindows {
     Import-Module PSWindowsUpdate
     Get-WindowsUpdate -MicrosoftUpdate -Install -AcceptAll -IgnoreReboot
     Write-Host "All Updates Installed"
-    exit 0
+    
 }
 
 # Default App
 function SetDefaultApp {
-    # Install Git if not exists
-    if (Get-Command git -ErrorAction SilentlyContinue) {
-        Write-Host "Git Version:"
-        git --version
-        exit 0
-    } else {
-        winget install --id Git.Git -e --source winget --accept-package-agreements --accept-source-agreements
-    }
+    # Git app intall
 
     $pssfta = "https://github.com/DanysysTeam/PS-SFTA.git"
+    Start-Process cmd.exe -ArgumentList "/c cd `"$downloadPath`" && git clone `"$pssfta`"" -Wait
     
+    Start-Process powershell.exe -ArgumentList "-NoExit","-Command","Set-Location `"$downloadPath\PS-SFTA`"; Get-FTA"
 }
 
 # ClearDisk function
@@ -162,6 +156,39 @@ function ClearDisk {
     ClearDisk -Number $diskNumber -RemoveData -Confirm:$false
     Initialize-Disk -Number $diskNumber -PartitionStyle MBR
     New-Partition -DiskNumber $diskNumber -UseMaximumSize -AssignDriveLetter | Format-Volume -FileSystem $fileSystem -NewFileSystemLabel $label -Confirm:$false
+}
+
+# IPCONFIG /ALL function
+function IpconfigAll {
+    # Create file
+    $file = "ipconfig_$env:COMPUTERNAME.txt"
+    $filePath = Join-Path $downloadPath $file
+    ipconfig /all | Out-File -FilePath $filePath -Encoding UTF8
+    
+    New-PSDrive -Name "Z" -PSProvider FileSystem -Root $samba -Credential $cred -Persist
+    Copy-Item $filePath "$samba\$file" -Force
+    Remove-PSDrive -Name "Z" -Force
+    Write-Host "Ipconfig copied"
+}
+
+# Auto Remove Basic Apps MS 365 - en - EN & pl-PL
+function RemoveMS {
+    # Remove Autoinstalled MS Office Apps
+    $C2R = "$env:ProgramFiles\Common Files\Microsoft Shared\ClickToRun\OfficeClickToRun.exe"
+    if(-not (Test-Path $C2R)) {
+    Write-Host "Office not detected"
+    return 0
+    } else {
+    Start-Process -FilePath $C2R -ArgumentList "scenario=install scenariosubtype=uninstall DisplayLevel=False forceappshutdown=True" -Wait
+    #$OfficeUninstallStrings = (Get-ItemProperty HKLM:\Software\Microsoft\Windows\CurrentVersion\Uninstall\* | Where {$_.DisplayName -like "*Microsoft Office 365*"} | Select UninstallString).UninstallString
+    #ForEach ($UninstallString in $OfficeUninstallStrings) {
+     #   $UninstallEXE = ($UninstallString -split '"')[1]
+      #  $UninstallArg = ($UninstallString -split '"')[2] + " DisplayLevel=False"
+       # Start-Process -FilePath $UninstallEXE -ArgumentList $UninstallArg -Wait
+    #} 
+    Write-Host "Office Uninstalled"
+    return 0
+    }
 }
 
 # Clear Installation Files function
@@ -186,25 +213,29 @@ function ClearInstallationFiles {
 
 try {
     # MENU section
-    Write-Host "What u want to install (e.g. 1,2,4)"
+    Write-Host "What u want to install (e.g. 0,1,2,4)"
+    Write-Host "[0] Uninstall Default MS Office 365"
     Write-Host "[1] Install Chrome"
     Write-Host "[2] Install Adobe Reader"
     Write-Host "[3] Install MS Office 2024 LTS"
     Write-Host "[4] Change the toolbar"
     Write-Host "[5] Update Windows & drivers"
     Write-Host "[6] Clean up disk"
+    Write-Host "[7] Copy IPCONFIG"
     Write-Host ""
     $choice = Read-Host "Choose options (e.g. 1,2,4)"
     $selected = $choice -split ',' | ForEach-Object { $_.Trim() }
 
     foreach ($s in $selected) {
         switch ($s) {
+            '0' { RemoveMS }
             '1' { InstallChrome }
             '2' { InstallAdobe }
             '3' { InstallOffice }
             '4' { ChangeToolbar }
             '5' { UpdateWindows }
             '6' { ClearDisk }
+            '7' { IpconfigAll }
             default { Write-Warning "Undefined value: $s" }
         }
     }
@@ -214,3 +245,4 @@ finally {
     ClearInstallationFiles
 }
 Write-Host "Installation complete. The last thing to do is change the default application in .pdf files => Adobe and .html files -> Chrome"
+Read-Host "Press [Enter] to close"

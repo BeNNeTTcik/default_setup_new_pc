@@ -1,0 +1,1 @@
+dodanie możliwości tworzenia folderu i polaczenia go z serwerem + gnerowanie konta i podpiecie dostępu do skanera
