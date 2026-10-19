@@ -33,6 +33,7 @@ Copy-Item -Path "Z:\ChromeSetup.exe" -Destination "$downloadPath\ChromeSetup.exe
 Copy-Item -Path "Z:\Reader_pl_install.exe" -Destination "$downloadPath\Reader_pl_install.exe" -Verbose
 Copy-Item -Path "Z:\setup.exe" -Destination "$downloadPath\setup.exe" -Verbose
 Copy-Item -Path "Z:\Configuration.xml" -Destination "$downloadPath\Configuration.xml" -Verbose
+Copy-Item -Path "Z:\Remove_all.xml" -Destination "$downloadPath\Remove_all.xml" -Verbose
 Remove-PSDrive -Name Z 
 Write-Host "Files copied from `"$samba`""
 
@@ -174,15 +175,22 @@ function IpconfigAll {
 # Auto Remove Basic Apps MS 365 - en - EN & pl-PL
 function RemoveMS {
     # Remove Autoinstalled MS Office Apps
-    $C2R = "$env:ProgramFiles\Common Files\Microsoft Shared\ClickToRun\OfficeClickToRun.exe"
-    if(-not (Test-Path $C2R)) {
-    Write-Host "Office not detected"
-    return 0
-    } else {
-    Start-Process -FilePath $C2R -ArgumentList "scenario=install scenariosubtype=uninstall DisplayLevel=False forceappshutdown=True" -Wait
-    Write-Host "Office Uninstalled"
-    return 0
-    }
+    #$C2R = "$env:ProgramFiles\Common Files\Microsoft Shared\ClickToRun\OfficeClickToRun.exe"
+    #if(-not (Test-Path $C2R)) {
+    #Write-Host "Office not detected"
+    #return 0
+    #} else {
+    #Start-Process -FilePath $C2R -ArgumentList "scenario=install scenariosubtype=uninstall DisplayLevel=False forceappshutdown=True" -Wait
+    #Write-Host "Office Uninstalled"
+    #return 0
+    #}
+
+    Write-Host ">>> Remove Office 365"
+    $installerPath = "$downloadPath\setup.exe"
+    $configureFile = "$downloadPath\Remove_all.xml"
+    $r = Start-Process cmd.exe -ArgumentList "/c cd `"$downloadPath`" && setup /configure `"$configureFile`"" -Wait -PassThru -Verb RunAs
+    $r.WaitForExit()
+    Write-Host "ExitCode `"$($r.ExitCode)`" if 0 == App Removed"
 }
 
 # Clear Installation Files function
