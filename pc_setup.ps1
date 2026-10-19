@@ -133,7 +133,14 @@ function InstallOffice {
 # Windows Update function
 function UpdateWindows {
     Write-Host ">>> Updating Windows"
+    # Install PSWindowsUpdate module if not already installed
+    [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
+    if (-not (Get-PackageProvider -ListAvailable -Name NuGet -ErrorAction SilentlyContinue)) {
+    Install-PackageProvider -Name NuGet -MinimumVersion 2.8.5.201 -Force -Scope AllUsers | Out-Null
+    }
+    Set-PSRepository -Name PSGallery -InstallationPolicy Trusted
     Install-Module -Name PSWindowsUpdate -Force -Confirm:$false
+    # ----
     Set-ExecutionPolicy -ExecutionPolicy Bypass -Scope Process -Force
     Import-Module PSWindowsUpdate
     Get-WindowsUpdate -MicrosoftUpdate -Install -AcceptAll -IgnoreReboot
